@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>">
+  <title>Sign In - FastAid</title><link rel="stylesheet" href="assets/css/style.css"><link rel="stylesheet" href="assets/css/legacy.css">
+</head>
+<body class="legacy-page">
+  <main class="auth-container">
+    <div class="auth-box">
+      <div class="legacy-form-title"><svg class="legacy-icon"><use href="assets/icons.svg#heart-pulse"></use></svg><h2>FastAid</h2><p>Sign in to your account</p></div>
+      <form onsubmit="handleLogin(event)">
+        <div class="mb-3"><label class="form-label" for="liEmail">Email Address</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#mail"></use></svg></span><input type="email" id="liEmail" class="form-control" placeholder="Enter your email" required autocomplete="email"></div></div>
+        <div class="mb-3"><label class="form-label" for="liPass">Password</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#shield"></use></svg></span><input type="password" id="liPass" class="form-control" placeholder="Enter your password" required autocomplete="current-password"></div></div>
+        <button type="submit" class="btn btn-danger w-100 py-2 fw-bold">Sign In</button>
+      </form>
+      <hr class="legacy-divider">
+      <div class="text-center"><p class="mb-2">Don't have an account?</p><div class="d-flex gap-2 justify-content-center legacy-register-links"><a href="register.html?role=patient" class="btn btn-outline-danger btn-sm">Register as Patient</a><a href="register.html?role=volunteer" class="btn btn-outline-danger btn-sm">Register as Volunteer</a></div></div>
+      <p class="text-center mt-4 mb-0"><a class="legacy-back-link" href="index.html">← Back to Home</a></p>
+    </div>
+  </main>
+  <script src="assets/js/main.js"></script><script src="assets/js/api.js"></script>
+  <script>
+    function toggleNav(){const l=document.getElementById('navLinks');if(l){l.classList.toggle('open');document.querySelector('.hamburger')?.setAttribute('aria-expanded',l.classList.contains('open'));}}
+    function handleLogin(e){e.preventDefault();api.login({email:document.getElementById('liEmail').value,password:document.getElementById('liPass').value}).then(r=>{if(r.success){const role=r.data?.user?.role;const dashboards={patient:'patient-dashboard.html',volunteer:'volunteer-dashboard.html',admin:'admin.html'};if(!dashboards[role]){showToast('Unable to determine your account role.','error');return;}showToast('Welcome back!');window.location=dashboards[role];}else{showToast(r.error||'Login failed.','error');}});}
+  </script>
+</body>
+</html>

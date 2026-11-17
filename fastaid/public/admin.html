@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>">
+  <title>Admin Dashboard — FastAid</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/legacy.css">
+</head>
+<body class="admin-page legacy-page">
+  <button class="admin-menu-toggle" id="adminMenuToggle" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
+  <div class="admin-overlay" id="adminOverlay"></div>
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-brand">
+      <div class="admin-brand-row"><svg class="admin-icon admin-heart" aria-hidden="true"><use href="assets/icons.svg#heart-pulse"></use></svg><span>FastAid Admin</span></div>
+      <div class="admin-email" id="adminEmail">Loading account…</div>
+    </div>
+    <nav class="admin-menu" aria-label="Admin sections">
+      <button class="admin-menu-item is-active" type="button" data-section="dashboard"><span aria-hidden="true"><svg class="admin-icon"><use href="assets/icons.svg#dashboard"></use></svg></span>Dashboard</button>
+      <button class="admin-menu-item" type="button" data-section="volunteers"><span aria-hidden="true"><svg class="admin-icon"><use href="assets/icons.svg#medical"></use></svg></span>Volunteers</button>
+      <button class="admin-menu-item" type="button" data-section="patients"><span aria-hidden="true"><svg class="admin-icon"><use href="assets/icons.svg#users"></use></svg></span>Patients</button>
+      <button class="admin-menu-item" type="button" data-section="requests"><span aria-hidden="true"><svg class="admin-icon"><use href="assets/icons.svg#file"></use></svg></span>Requests</button>
+      <button class="admin-menu-item admin-logout" id="adminLogout" type="button"><span aria-hidden="true"><svg class="admin-icon"><use href="assets/icons.svg#logout"></use></svg></span>Logout</button>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <section class="admin-section is-visible" id="section-dashboard" aria-labelledby="adminPageTitle">
+      <header class="admin-page-header"><div><h1 id="adminPageTitle">Dashboard</h1></div></header>
+      <div class="admin-stats" aria-label="FastAid statistics">
+        <article class="admin-stat admin-stat-pending"><span>Pending Volunteers</span><strong id="statPending">—</strong></article>
+        <article class="admin-stat admin-stat-approved"><span>Approved Volunteers</span><strong id="statApproved">—</strong></article>
+        <article class="admin-stat admin-stat-patients"><span>Total Patients</span><strong id="statPatients">—</strong></article>
+        <article class="admin-stat admin-stat-requests"><span>Pending Requests</span><strong id="statRequests">—</strong></article>
+      </div>
+      <article class="admin-card">
+        <div class="admin-card-heading"><h2>Pending Volunteer Approvals</h2><span class="admin-queue-count" id="pendingCount" hidden>0 pending</span></div>
+        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Degree</th><th>Registered</th><th>Action</th></tr></thead><tbody id="pendingTable"></tbody></table></div>
+        <div class="admin-empty" id="pendingEmpty" hidden>No pending volunteers</div>
+      </article>
+    </section>
+
+    <section class="admin-section" id="section-volunteers" aria-labelledby="volunteersTitle" hidden>
+      <header class="admin-page-header"><div><h1 id="volunteersTitle">Volunteer Management</h1></div></header>
+      <article class="admin-card"><div class="admin-card-heading"><div><p class="admin-eyebrow">Volunteer directory</p><h2>All Volunteers</h2></div></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Degree</th><th>Status</th></tr></thead><tbody id="volunteersTable"></tbody></table></div><div class="admin-empty" id="volunteersEmpty" hidden>No volunteers found</div></article>
+    </section>
+
+    <section class="admin-section" id="section-patients" aria-labelledby="patientsTitle" hidden>
+      <header class="admin-page-header"><div><h1 id="patientsTitle">Patient Management</h1></div></header>
+      <article class="admin-card"><div class="admin-card-heading"><div><p class="admin-eyebrow">Patient directory</p><h2>All Patients</h2></div></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th></tr></thead><tbody id="patientsTable"></tbody></table></div><div class="admin-empty" id="patientsEmpty" hidden>No patients found</div></article>
+    </section>
+
+    <section class="admin-section" id="section-requests" aria-labelledby="requestsTitle" hidden>
+      <header class="admin-page-header"><div><h1 id="requestsTitle">Service Requests</h1></div></header>
+      <article class="admin-card"><div class="admin-card-heading"><div><p class="admin-eyebrow">Latest cases</p><h2>Emergency Requests</h2></div></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Emergency Type</th><th>Status</th><th>Patient</th><th>Created</th></tr></thead><tbody id="requestsTable"></tbody></table></div><div class="admin-empty" id="requestsEmpty" hidden>No requests found</div></article>
+    </section>
+  </main>
+
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth-guard.js"></script>
+  <script>
+    const sectionNames = { dashboard: 'Dashboard', volunteers: 'Volunteer Management', patients: 'Patient Management', requests: 'Service Requests' };
+    let adminUsersCache = null;
+
+    function setAdminRows(tbodyId, emptyId, rows, renderRow, emptyText) {
+      const tbody = document.getElementById(tbodyId);
+      tbody.innerHTML = rows.map(renderRow).join('');
+      const empty = document.getElementById(emptyId);
+      empty.textContent = emptyText;
+      empty.hidden = rows.length !== 0;
+    }
+
+    function showAdminError(response, fallback) {
+      showToast(response && response.error ? response.error : fallback, 'error');
+    }
+
+    function formatAdminDate(value) {
+      if (!value) return '—';
+      const date = new Date(value.replace(' ', 'T'));
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+    }
+
+    function loadAdminStats() {
+      return api.admin_stats().then(r => {
+        if (!r.success) { showAdminError(r, 'Could not load dashboard statistics.'); return; }
+        document.getElementById('statPending').textContent = escapeHtml(r.data.pendingVerifications ?? 0);
+        document.getElementById('statApproved').textContent = escapeHtml(r.data.volunteers ?? 0);
+        document.getElementById('statPatients').textContent = escapeHtml(r.data.patients ?? 0);
+        document.getElementById('statRequests').textContent = escapeHtml(r.data.activeRequests ?? 0);
+      }).catch(() => showToast('Could not load dashboard statistics.', 'error'));
+    }
+
+    function loadPendingVolunteers() {
+      return api.admin_pending_volunteers().then(r => {
+        if (!r.success) { showAdminError(r, 'Could not load pending volunteers.'); return; }
+        const rows = r.data.users || [];
+        document.getElementById('pendingCount').textContent = escapeHtml(rows.length) + ' pending';
+        setAdminRows('pendingTable', 'pendingEmpty', rows, v => '<tr><td>'+escapeHtml(v.full_name)+'</td><td>'+escapeHtml(v.email)+'</td><td>'+escapeHtml(v.phone || '—')+'</td><td>'+escapeHtml(v.certification_type || '—')+'</td><td>'+escapeHtml(formatAdminDate(v.registered_at))+'</td><td><div class="admin-actions"><button type="button" class="admin-action admin-action-verify" data-action="verify" data-id="'+escapeHtml(v.id)+'">Verify</button><button type="button" class="admin-action admin-action-reject" data-action="reject" data-id="'+escapeHtml(v.id)+'">Reject</button></div></td></tr>', 'No pending volunteers');
+      }).catch(() => showToast('Could not load pending volunteers.', 'error'));
+    }
+
+    function loadUsers() {
+      return api.admin_users().then(r => {
+        if (!r.success) { showAdminError(r, 'Could not load users.'); return; }
+        adminUsersCache = r.data.users || [];
+        const volunteers = adminUsersCache.filter(u => u.role === 'volunteer');
+        const patients = adminUsersCache.filter(u => u.role === 'patient');
+        setAdminRows('volunteersTable', 'volunteersEmpty', volunteers, u => '<tr><td>'+escapeHtml(u.full_name)+'</td><td>'+escapeHtml(u.email)+'</td><td>'+escapeHtml(u.phone || '—')+'</td><td>'+escapeHtml(u.certification_type || '—')+'</td><td><span class="admin-status admin-status-'+escapeHtml(u.verified_status || 'pending')+'">'+escapeHtml(u.verified_status || 'pending')+'</span></td></tr>', 'No volunteers found');
+        setAdminRows('patientsTable', 'patientsEmpty', patients, u => '<tr><td>'+escapeHtml(u.full_name)+'</td><td>'+escapeHtml(u.email)+'</td><td>'+escapeHtml(u.phone || '—')+'</td><td>'+escapeHtml(formatAdminDate(u.created_at))+'</td></tr>', 'No patients found');
+      }).catch(() => showToast('Could not load users.', 'error'));
+    }
+
+    function loadRequests() {
+      return api.admin_requests().then(r => {
+        if (!r.success) { showAdminError(r, 'Could not load requests.'); return; }
+        const rows = r.data.requests || [];
+        setAdminRows('requestsTable', 'requestsEmpty', rows, request => '<tr><td>'+escapeHtml(request.emergency_type || '—')+'</td><td><span class="admin-status admin-status-'+escapeHtml(request.status || '')+'">'+escapeHtml((request.status || '—').replaceAll('_', ' '))+'</span></td><td>'+escapeHtml(request.patient_name || '—')+'</td><td>'+escapeHtml(formatAdminDate(request.created_at))+'</td></tr>', 'No requests found');
+      }).catch(() => showToast('Could not load requests.', 'error'));
+    }
+
+    function openAdminSection(name) {
+      document.querySelectorAll('.admin-section').forEach(section => {
+        section.hidden = section.id !== 'section-' + name;
+        section.classList.toggle('is-visible', !section.hidden);
+      });
+      document.querySelectorAll('.admin-menu-item[data-section]').forEach(button => button.classList.toggle('is-active', button.dataset.section === name));
+      document.getElementById('adminPageTitle').textContent = sectionNames[name] || 'Dashboard';
+      document.getElementById('adminSidebar').classList.remove('is-open');
+      document.getElementById('adminOverlay').classList.remove('is-visible');
+      document.getElementById('adminMenuToggle').setAttribute('aria-expanded', 'false');
+      if (name === 'dashboard') { loadAdminStats(); loadPendingVolunteers(); }
+      if (name === 'volunteers' || name === 'patients') loadUsers();
+      if (name === 'requests') loadRequests();
+    }
+
+    function reviewVolunteer(action, id, button) {
+      const verb = action === 'verify' ? 'verify' : 'reject';
+      if (!window.confirm('Are you sure you want to ' + verb + ' this volunteer?')) return;
+      button.disabled = true;
+      const request = action === 'verify' ? api.admin_verify_volunteer({ id }) : api.admin_reject_volunteer({ id });
+      request.then(r => {
+        if (!r.success) { showAdminError(r, 'Could not ' + verb + ' volunteer.'); button.disabled = false; return; }
+        showToast(action === 'verify' ? 'Volunteer verified.' : 'Volunteer rejected.');
+        return Promise.all([loadPendingVolunteers(), loadAdminStats()]);
+      }).catch(() => { showToast('Could not ' + verb + ' volunteer.', 'error'); button.disabled = false; });
+    }
+    function verify(id, button) { if (button) reviewVolunteer('verify', id, button); }
+    function reject(id, button) { if (button) reviewVolunteer('reject', id, button); }
+    function toggleNav() {
+      const sidebar = document.getElementById('adminSidebar');
+      const isOpen = sidebar.classList.toggle('is-open');
+      document.getElementById('adminOverlay').classList.toggle('is-visible', isOpen);
+      document.getElementById('adminMenuToggle').setAttribute('aria-expanded', String(isOpen));
+    }
+
+    document.querySelectorAll('.admin-menu-item[data-section]').forEach(button => button.addEventListener('click', () => openAdminSection(button.dataset.section)));
+    document.getElementById('pendingTable').addEventListener('click', event => {
+      const button = event.target.closest('button[data-action]');
+      if (button && button.dataset.action === 'verify') verify(button.dataset.id, button);
+      else if (button) reject(button.dataset.id, button);
+    });
+    document.getElementById('adminMenuToggle').addEventListener('click', toggleNav);
+    document.getElementById('adminOverlay').addEventListener('click', () => {
+      document.getElementById('adminSidebar').classList.remove('is-open');
+      document.getElementById('adminOverlay').classList.remove('is-visible');
+      document.getElementById('adminMenuToggle').setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('adminLogout').addEventListener('click', () => {
+      api.logout().then(r => {
+        if (r.success) window.location.href = 'login.html';
+        else showAdminError(r, 'Could not log out.');
+      }).catch(() => showToast('Could not log out.', 'error'));
+    });
+    api.get_me().then(r => {
+      if (r.success && r.data.user && r.data.user.role === 'admin') {
+        document.getElementById('adminEmail').innerHTML = escapeHtml(r.data.user.email || '');
+      } else if (r.success) {
+        document.getElementById('adminEmail').innerHTML = escapeHtml(r.data.user.email || '');
+      }
+    }).catch(() => {});
+    openAdminSection('dashboard');
+  </script>
+</body>
+</html>

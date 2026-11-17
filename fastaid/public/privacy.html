@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>"><title>Privacy Policy — FastAid</title><link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/legacy.css"></head><body class="legacy-page legal-page">
+<nav class="navbar" aria-label="Main"><div class="nav-inner"><a href="index.html" class="logo">Fast<span>Aid</span></a><button class="hamburger" onclick="toggleNav()" aria-label="Toggle" aria-expanded="false"><span></span><span></span><span></span></button><div class="nav-links" id="navLinks"><a href="index.html">Home</a><a href="privacy.html">Privacy</a></div></div></nav>
+<main style="max-width:800px;margin:60px auto;padding:0 20px;" aria-label="Privacy Policy">
+  <h1>Privacy Policy</h1>
+  <p>FastAid collects the minimum data needed to connect patients with certified volunteers, including location, contact information, and emergency descriptions. We do not sell personal data. Data is encrypted in transit and stored securely. You may request deletion at any time.</p>
+</main>
+<script src="assets/js/main.js"></script>
+<script>function toggleNav(){const links=document.getElementById('navLinks');links.classList.toggle('open');document.querySelector('.hamburger').setAttribute('aria-expanded',links.classList.contains('open'));}</script>
+</body></html>

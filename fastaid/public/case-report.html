@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>">
+  <title>Emergency Case Report — FastAid</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/legacy.css">
+  <style>
+    body {
+      background: #f8fafc;
+      color: #1e293b;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 24px;
+    }
+    .report-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 36px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .logo-text {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .logo-text span {
+      color: #dc2626;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-completed { background: #dcfce7; color: #15803d; }
+    .badge-arrived { background: #e0f2fe; color: #0369a1; }
+    .badge-requested { background: #fef3c7; color: #b45309; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 24px 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .field-value {
+      font-size: 15px;
+      font-weight: 500;
+      color: #0f172a;
+    }
+    .box-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 10px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .report-container { box-shadow: none; border: none; padding: 0; }
+      .actions, .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="legacy-page report-page">
+
+<div class="report-container" id="reportContent">
+  <div class="header-bar">
+    <div>
+      <div class="logo-text">Fast<span>Aid</span> Case Report</div>
+      <p style="margin: 4px 0 0 0; color:#64748b; font-size:13px;">Official First-Response Incident Record</p>
+    </div>
+    <div id="statusBadgeContainer">
+      <span class="badge badge-completed" id="statusBadge">Loading...</span>
+    </div>
+  </div>
+
+  <div class="section-title">Emergency Summary</div>
+  <div class="grid-2">
+    <div>
+      <div class="field-label">Case ID</div>
+      <div class="field-value" id="caseId">—</div>
+    </div>
+    <div>
+      <div class="field-label">Emergency Category</div>
+      <div class="field-value" id="caseType">—</div>
+    </div>
+    <div>
+      <div class="field-label">Timestamp Reported</div>
+      <div class="field-value" id="caseTime">—</div>
+    </div>
+    <div>
+      <div class="field-label">GPS Coordinates</div>
+      <div class="field-value" id="caseCoords">—</div>
+    </div>
+  </div>
+
+  <div class="field-label">Description / Situation</div>
+  <div class="box-card" id="caseDesc" style="margin-bottom:16px;">—</div>
+
+  <div class="section-title">Patient & Location</div>
+  <div class="grid-2">
+    <div>
+      <div class="field-label">Patient Name</div>
+      <div class="field-value" id="patientName">—</div>
+    </div>
+    <div>
+      <div class="field-label">Patient Contact</div>
+      <div class="field-value" id="patientEmail">—</div>
+    </div>
+  </div>
+
+  <div class="section-title">Assigned Responder Details</div>
+  <div class="grid-2">
+    <div>
+      <div class="field-label">Volunteer Responder</div>
+      <div class="field-value" id="volName">—</div>
+    </div>
+    <div>
+      <div class="field-label">Medical Certification</div>
+      <div class="field-value" id="volCert">—</div>
+    </div>
+    <div>
+      <div class="field-label">License / Cert ID</div>
+      <div class="field-value" id="volCertId">—</div>
+    </div>
+    <div>
+      <div class="field-label">Clinical Experience</div>
+      <div class="field-value" id="volExp">—</div>
+    </div>
+  </div>
+
+  <div class="section-title">Response Timeline & Milestones</div>
+  <div class="grid-2">
+    <div>
+      <div class="field-label">Assigned At</div>
+      <div class="field-value" id="timeAssigned">—</div>
+    </div>
+    <div>
+      <div class="field-label">Arrived On-Scene</div>
+      <div class="field-value" id="timeArrived">—</div>
+    </div>
+    <div>
+      <div class="field-label">Case Completed</div>
+      <div class="field-value" id="timeCompleted">—</div>
+    </div>
+    <div>
+      <div class="field-label">Total Duration</div>
+      <div class="field-value" id="totalDuration">—</div>
+    </div>
+  </div>
+
+  <div class="section-title">Quality & Debrief Assessment</div>
+  <div class="grid-2">
+    <div>
+      <div class="field-label">Patient Rating</div>
+      <div class="field-value" id="ratingStars">—</div>
+    </div>
+    <div>
+      <div class="field-label">Patient Feedback</div>
+      <div class="field-value" id="ratingComment">—</div>
+    </div>
+  </div>
+
+  <div id="debriefSection" style="margin-top:14px;">
+    <div class="field-label">Responder Debrief: What Worked Well</div>
+    <div class="box-card" id="debriefWorked" style="margin-bottom:8px;">—</div>
+    <div class="field-label">Responder Debrief: Difficulties & Next Steps</div>
+    <div class="box-card" id="debriefHard">—</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-outline no-print" onclick="window.close()">Close</button>
+    <button class="btn btn-red no-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+</div>
+
+<script src="assets/js/api.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const requestId = params.get('id') || 'r101';
+
+  api.get_case_report(requestId).then(res => {
+    if (!res.success || !res.data || !res.data.report) {
+      alert(res.error || 'Failed to load case report');
+      return;
+    }
+    const r = res.data.report;
+    document.getElementById('caseId').textContent = r.id;
+    document.getElementById('caseType').textContent = r.emergencyType;
+    document.getElementById('caseTime').textContent = r.createdAt;
+    document.getElementById('caseCoords').textContent = (r.latitude && r.longitude) ? `${r.latitude}, ${r.longitude}` : 'N/A';
+    document.getElementById('caseDesc').textContent = r.description || 'None provided.';
+    document.getElementById('statusBadge').textContent = r.status.toUpperCase();
+
+    // Patient
+    if (r.patient) {
+      document.getElementById('patientName').textContent = r.patient.name;
+      document.getElementById('patientEmail').textContent = r.patient.email;
+    }
+
+    // Volunteer
+    if (r.volunteer) {
+      document.getElementById('volName').textContent = r.volunteer.name;
+      document.getElementById('volCert').textContent = r.volunteer.certification;
+      document.getElementById('volCertId').textContent = r.volunteer.certNumber || 'N/A';
+      document.getElementById('volExp').textContent = r.volunteer.yearsExp + ' Years';
+      document.getElementById('timeAssigned').textContent = r.volunteer.assignedAt || '—';
+      document.getElementById('timeArrived').textContent = r.volunteer.arrivedAt || '—';
+      document.getElementById('timeCompleted').textContent = r.volunteer.completedAt || '—';
+
+      if (r.volunteer.assignedAt && r.volunteer.completedAt) {
+        const start = new Date(r.volunteer.assignedAt);
+        const end = new Date(r.volunteer.completedAt);
+        const diffMins = Math.round((end - start) / 60000);
+        document.getElementById('totalDuration').textContent = `${diffMins} min`;
+      }
+    }
+
+    // Rating
+    if (r.rating) {
+      document.getElementById('ratingStars').textContent = '★'.repeat(r.rating.stars) + '☆'.repeat(5 - r.rating.stars) + ` (${r.rating.stars}/5)`;
+      document.getElementById('ratingComment').textContent = r.rating.comment || 'No comment';
+    }
+
+    // Debrief
+    if (r.debrief) {
+      document.getElementById('debriefWorked').textContent = r.debrief.whatWorked || 'N/A';
+      document.getElementById('debriefHard').textContent = r.debrief.whatWasHard || 'N/A';
+    }
+  });
+</script>
+</body>
+</html>

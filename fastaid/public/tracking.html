@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>"><title>Tracking — FastAid</title><link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/legacy.css"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script></head><body class="legacy-page tracking-page">
+<nav class="navbar" aria-label="Main"><div class="nav-inner"><a href="index.html" class="logo">Fast<span>Aid</span></a><button class="hamburger" onclick="toggleNav()" aria-label="Toggle" aria-expanded="false"><span></span><span></span><span></span></button><div class="nav-links" id="navLinks"><a href="index.html">Home</a><a href="tracking.html">Track</a><a href="request.html" class="nav-btn">New Request</a></div></div></nav>
+<main style="max-width:900px;margin:60px auto;padding:0 20px;" aria-label="Tracking">
+  <h2>Case Tracking — Bleeding</h2>
+  <p style="color:var(--text-light);margin-bottom:16px;">Volunteer: Dr. James Park • 1.2 km away • ~3 min</p>
+  <div id="map" class="map-container"></div>
+
+  <section aria-label="Status timeline">
+    <h3 style="font-weight:600;margin-bottom:10px;">Status</h3>
+    <div class="status-timeline" id="timeline"></div>
+  </section>
+
+  <section aria-label="Volunteer info" style="margin-top:24px;">
+    <div class="card"><div style="display:flex;align-items:center;gap:14px;"><div class="avatar avatar-md" style="background:#2a7a2a;">JP</div><div><div class="card-icon">&#9670;</div><h4>Dr. James Park</h4><p>EMT-B • 7 years • Verified</p></div></div></div>
+  </section>
+
+  <section aria-label="Rating" style="margin-top:30px;" id="ratingSection" style="display:none;">
+    <div class="card-icon">&#9670;</div><h3>Rate Your Experience</h3>
+    <div class="card"><form onsubmit="submitRating(event)">
+      <div style="display:flex;gap:8px;font-size:1.6rem;cursor:pointer;" aria-label="Star rating">
+        <button type="button" onclick="pickStar(1)" aria-label="1 star">★</button><button type="button" onclick="pickStar(2)" aria-label="2 stars">★</button><button type="button" onclick="pickStar(3)" aria-label="3 stars">★</button><button type="button" onclick="pickStar(4)" aria-label="4 stars">★</button><button type="button" onclick="pickStar(5)" aria-label="5 stars">★</button>
+      </div>
+      <button type="submit" class="btn btn-red" style="margin-top:10px;">Submit Rating</button>
+    </form></div>
+  </section>
+</main>
+<script src="assets/js/main.js"></script><script src="assets/js/api.js"></script><script>
+function toggleNav(){const l=document.getElementById('navLinks');l.classList.toggle('open');document.querySelector('.hamburger').setAttribute('aria-expanded',l.classList.contains('open'))}
+let map;
+const params = new URLSearchParams(window.location.search);
+const currentRequestId = params.get('id') || 'r101';
+let currentRating = 5;
+
+function initMap(){
+  map=L.map('map').setView([40.7,-74.0],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM'}).addTo(map);
+  L.marker([40.7,-74.0]).addTo(map).bindPopup('You').openPopup();
+  L.marker([40.703,-74.01]).addTo(map).bindPopup('Volunteer');
+}
+
+function updateTimeline(status) {
+  const steps = [
+    { key: 'requested', label: 'Requested' },
+    { key: 'accepted', label: 'Accepted' },
+    { key: 'on_the_way', label: 'On the way' },
+    { key: 'arrived', label: 'Arrived' },
+    { key: 'completed', label: 'Completed' }
+  ];
+  const order = ['requested', 'accepted', 'on_the_way', 'arrived', 'completed'];
+  const curIdx = order.indexOf(status);
+  const cont = document.getElementById('timeline');
+  cont.innerHTML = '';
+
+  steps.forEach((s, idx) => {
+    const isDone = idx <= curIdx;
+    const isActive = idx === curIdx;
+    const d = document.createElement('div');
+    d.className = 'status-step ' + (isDone ? 'completed' : '') + (isActive ? ' active' : '');
+    d.textContent = s.label;
+    cont.appendChild(d);
+  });
+
+  if (status === 'completed') {
+    document.getElementById('ratingSection').style.display = 'block';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('map')) initMap();
+  updateTimeline('requested');
+
+  // Initial fetch
+  api.get_request_status({ id: currentRequestId }).then(r => {
+    if (r.success && r.data.request) {
+      updateTimeline(r.data.request.status);
+    }
+  });
+
+  // Subscribe to real-time Server-Sent Events (SSE)
+  if (window.EventSource) {
+    api.subscribeStream(currentRequestId, {
+      onRequestUpdate: (req) => {
+        if (req.status) {
+          updateTimeline(req.status);
+          showToast('Status updated: ' + req.status, 'info');
+        }
+      }
+    });
+  }
+});
+
+function pickStar(n){
+  currentRating = n;
+  document.querySelectorAll('[aria-label*="star"]').forEach((b,i)=>b.textContent=i<n?'★':'☆');
+}
+
+function submitRating(e){
+  e.preventDefault();
+  api.submit_rating({
+    request_id: currentRequestId,
+    stars: currentRating,
+    comment: ''
+  }).then(r => {
+    if (r.success) {
+      showToast('Thanks for your rating!', 'success');
+      document.getElementById('ratingSection').innerHTML = '<p style="color:#2a7a2a;font-weight:600;">✓ Rating submitted. Thank you!</p><a href="case-report.html?id=' + encodeURIComponent(currentRequestId) + '" target="_blank" class="btn btn-outline" style="margin-top:10px;display:inline-block;">📄 View / Print Official Case Report</a>';
+    } else {
+      showToast(r.error || 'Rating failed', 'error');
+    }
+  });
+}
+</script><script src="assets/js/auth-guard.js"></script></body></html>

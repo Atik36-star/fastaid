@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php require_once __DIR__ . '/../includes/config.php'; require_once __DIR__ . '/../includes/csrf.php'; session_name(SESSION_NAME); session_start(); echo csrf_token(); ?>">
+  <title>Sign Up - FastAid</title><link rel="stylesheet" href="assets/css/style.css"><link rel="stylesheet" href="assets/css/legacy.css">
+</head>
+<body class="legacy-page">
+  <main class="auth-container legacy-register-page"><div class="auth-box">
+    <div class="legacy-form-title"><svg class="legacy-icon"><use href="assets/icons.svg#heart-pulse"></use></svg><h2>FastAid</h2><p>Create your account</p></div>
+    <div class="nav-pills mb-4" role="group" aria-label="Account type"><label class="nav-link active" id="patientRoleLabel"><input type="radio" name="role" value="patient" checked onchange="updateRoleFields()">Patient</label><label class="nav-link" id="volunteerRoleLabel"><input type="radio" name="role" value="volunteer" onchange="updateRoleFields()">Volunteer</label></div>
+    <form onsubmit="handleRegister(event)">
+      <div class="mb-3"><label class="form-label" for="regName">Full Name</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#user"></use></svg></span><input type="text" id="regName" class="form-control" placeholder="Enter your full name" required minlength="2" maxlength="100"></div></div>
+      <div class="mb-3"><label class="form-label" for="regEmail">Email Address</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#mail"></use></svg></span><input type="email" id="regEmail" class="form-control" placeholder="Enter your email" required autocomplete="email"></div></div>
+      <div class="mb-3"><label class="form-label" for="regPass">Password</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#shield"></use></svg></span><input type="password" id="regPass" class="form-control" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password"></div></div>
+      <div id="patientFields" class="mb-3"><p class="legacy-role-note">Register as a patient to request emergency assistance.</p></div>
+      <div id="volFields" style="display:none;">
+        <div class="mb-3"><label class="form-label" for="certType">Medical Degree / Qualification</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#medical"></use></svg></span><select id="certType" class="form-select"><option>First Aid</option><option>CPR</option><option>EMT-B</option></select></div></div>
+        <div class="mb-3"><label class="form-label" for="certNum">Training Certificate Number</label><div class="input-group"><span class="input-group-text"><svg class="legacy-inline-icon"><use href="assets/icons.svg#shield"></use></svg></span><input type="text" id="certNum" class="form-control" placeholder="e.g. CERT-1234"></div></div>
+        <div class="mb-3"><label class="form-label" for="yearsExp">Years of Experience</label><input type="number" id="yearsExp" class="form-control" min="0" max="50" value="2"></div>
+      </div>
+      <button type="submit" class="btn btn-danger w-100 py-2 fw-bold">Create Account</button>
+    </form>
+    <hr class="legacy-divider"><p class="text-center mb-0">Already have an account? <a class="legacy-text-link" href="login.html">Sign In</a></p>
+    <p class="text-center mt-4 mb-0"><a class="legacy-back-link" href="index.html">← Back to Home</a></p>
+  </div></main>
+  <script src="assets/js/main.js"></script><script src="assets/js/api.js"></script>
+  <script>
+    function toggleNav(){const l=document.getElementById('navLinks');if(l){l.classList.toggle('open');document.querySelector('.hamburger')?.setAttribute('aria-expanded',l.classList.contains('open'));}}
+    function updateRoleFields(){const role=document.querySelector('input[name="role"]:checked').value;document.getElementById('volFields').style.display=role==='volunteer'?'block':'none';document.getElementById('patientRoleLabel').classList.toggle('active',role==='patient');document.getElementById('volunteerRoleLabel').classList.toggle('active',role==='volunteer');}
+    function handleRegister(e){e.preventDefault();const role=document.querySelector('input[name="role"]:checked').value;const d={name:document.getElementById('regName').value,email:document.getElementById('regEmail').value,password:document.getElementById('regPass').value,role};if(role==='volunteer'){d.certification=document.getElementById('certType').value;d.certNumber=document.getElementById('certNum').value;d.yearsExp=document.getElementById('yearsExp').value;}api.register(d).then(r=>{if(r.success){showToast('Account created!');window.location=role==='volunteer'?'volunteer-dashboard.html':'patient-dashboard.html';}else{showToast(r.error||'Registration failed.','error');}});}
+    const selectedRole=new URLSearchParams(window.location.search).get('role');if(selectedRole==='volunteer'){document.querySelector('input[name="role"][value="volunteer"]').checked=true;updateRoleFields();}
+  </script>
+</body>
+</html>
